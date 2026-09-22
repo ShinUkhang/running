@@ -1,0 +1,13 @@
+{
+  "name": "student-running-app",
+  "version": "1.0.0",
+  "description": "학생 운동 기록 및 실시간 GPS 러닝 트래커 웹앱 (구글 스프레드시트 연동)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}
