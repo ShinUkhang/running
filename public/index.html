@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>학생 러닝 트래커 - 스마트 운동 기록 & 소셜 러닝</title>
   
+  <!-- 앱 파비콘 & 모바일 홈화면 러닝 아이콘 -->
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0284c7">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="스마트러닝">
+
   <!-- Leaflet Map CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   <!-- App Style -->
@@ -365,6 +374,40 @@
       </div>
     </div>
 
+    <!-- ================= 📸 완주 인증샷 포토 카드 생성 섹션 ================= -->
+    <div class="photo-card-section">
+      <div style="font-size:13px; font-weight:800; color:#38bdf8; display:flex; align-items:center; gap:6px;">
+        <span>📸</span> 완주 인증샷 포토 카드 (달린 흔적 + 사진)
+      </div>
+      <div style="font-size:11px; color:#94a3b8;">
+        내가 달린 GPS 경로와 완주 사진, 기록이 담긴 고화질 포토 카드를 만들어 저장하세요!
+      </div>
+
+      <!-- 포토 카드 캔버스 미리보기 -->
+      <div class="photo-card-canvas-wrapper">
+        <canvas id="snapshotCanvas" width="800" height="800"></canvas>
+      </div>
+
+      <!-- 사진 조작 버튼들 -->
+      <div class="photo-card-actions">
+        <button type="button" class="btn-card-action" id="btnTakeSnapPhoto">
+          <span>📷</span> 인증샷 찰칵!
+        </button>
+        <label class="btn-card-action" style="cursor:pointer; margin:0;">
+          <span>🖼️</span> 앨범 사진
+          <input type="file" id="inputSnapFile" accept="image/*" style="display:none;">
+        </label>
+        <button type="button" class="btn-card-action" id="btnToggleSnapTheme">
+          <span>🎨</span> 배경 토글
+        </button>
+      </div>
+
+      <!-- 이미지 다운로드 버튼 -->
+      <button type="button" class="btn-download-card" id="btnDownloadSnapCard">
+        <span>💾</span> 완주 인증샷 이미지 저장 (다운로드)
+      </button>
+    </div>
+
     <!-- 시트 전송 상태 알림 -->
     <div id="sheetSendStatus" style="font-size:13px; text-align:center; padding:10px; border-radius:10px; background:#0f172a; border:1px solid #334155; color:#38bdf8;">
       ⏳ 스프레드시트로 전송 준비 중...
@@ -377,6 +420,32 @@
       <button class="btn-main btn-start" id="btnCloseFinishModal" style="background:#334155;">
         닫기 및 새 운동 준비
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 모달 3: 완주 인증샷 즉석 촬영 카메라 ================= -->
+<div class="modal-backdrop" id="snapCameraModal">
+  <div class="modal-card">
+    <div class="modal-icon">📷</div>
+    <div class="modal-title">완주 인증샷 찰칵!</div>
+    <div class="modal-desc">
+      오늘 달린 뿌듯한 얼굴이나 배경을 찍어보세요!
+    </div>
+
+    <div class="camera-box">
+      <div style="position:relative; width:100%; aspect-ratio:1/1; border-radius:16px; overflow:hidden; border:3px solid #38bdf8; background:#000;">
+        <video id="snapVideo" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; transform:scaleX(-1);"></video>
+      </div>
+
+      <div style="display:flex; gap:8px; width:100%;">
+        <button type="button" class="btn-main btn-start" id="btnCaptureSnapPhoto" style="flex:2;">
+          <span>📸</span> 찰칵! 사진 찍기
+        </button>
+        <button type="button" class="btn-main" id="btnCloseSnapCamera" style="flex:1; background:#334155; color:#fff;">
+          취소
+        </button>
+      </div>
     </div>
   </div>
 </div>

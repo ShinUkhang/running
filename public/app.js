@@ -47,7 +47,14 @@ const state = {
   friendMarkers: new Map(),
   
   // Socket.io 객체
-  socket: null
+  socket: null,
+
+  // 완주 인증샷 포토 카드 상태
+  snapshot: {
+    photoImg: null,
+    theme: 'photo', // 'photo' | 'dark'
+    snapStream: null
+  }
 };
 
 // 종목별 MET 지수
@@ -137,7 +144,18 @@ const elements = {
   settingSportType: document.getElementById('settingSportType'),
   btnSaveStudentInfo: document.getElementById('btnSaveStudentInfo'),
   settingGasUrl: document.getElementById('settingGasUrl'),
-  btnSaveGasUrl: document.getElementById('btnSaveGasUrl')
+  btnSaveGasUrl: document.getElementById('btnSaveGasUrl'),
+
+  // 완주 인증샷 포토 카드 엘리먼트
+  snapshotCanvas: document.getElementById('snapshotCanvas'),
+  btnTakeSnapPhoto: document.getElementById('btnTakeSnapPhoto'),
+  inputSnapFile: document.getElementById('inputSnapFile'),
+  btnToggleSnapTheme: document.getElementById('btnToggleSnapTheme'),
+  btnDownloadSnapCard: document.getElementById('btnDownloadSnapCard'),
+  snapCameraModal: document.getElementById('snapCameraModal'),
+  snapVideo: document.getElementById('snapVideo'),
+  btnCaptureSnapPhoto: document.getElementById('btnCaptureSnapPhoto'),
+  btnCloseSnapCamera: document.getElementById('btnCloseSnapCamera')
 };
 
 // ================= 초기화 =================
@@ -563,6 +581,29 @@ function bindEvents() {
     localStorage.setItem('running_gas_url', url);
     alert('구글 스프레드시트 연동 Web App URL이 저장되었습니다!');
   });
+
+  // 8. 완주 인증샷 포토 카드 조작
+  if (elements.btnTakeSnapPhoto) {
+    elements.btnTakeSnapPhoto.addEventListener('click', openSnapCameraModal);
+  }
+  if (elements.btnCaptureSnapPhoto) {
+    elements.btnCaptureSnapPhoto.addEventListener('click', captureSnapPhoto);
+  }
+  if (elements.btnCloseSnapCamera) {
+    elements.btnCloseSnapCamera.addEventListener('click', closeSnapCameraModal);
+  }
+  if (elements.inputSnapFile) {
+    elements.inputSnapFile.addEventListener('change', handleSnapFileUpload);
+  }
+  if (elements.btnToggleSnapTheme) {
+    elements.btnToggleSnapTheme.addEventListener('click', () => {
+      state.snapshot.theme = state.snapshot.theme === 'photo' ? 'dark' : 'photo';
+      renderSnapshotCard();
+    });
+  }
+  if (elements.btnDownloadSnapCard) {
+    elements.btnDownloadSnapCard.addEventListener('click', downloadSnapshotImage);
+  }
 }
 
 // ================= 즉석 온보딩 완료 =================
@@ -697,6 +738,9 @@ function stopWorkout() {
   elements.resPace.textContent = paceStr + ' /km';
 
   elements.finishModal.classList.add('active');
+
+  // 완주 인증샷 포토 카드 즉시 렌더링
+  renderSnapshotCard();
 
   emitMyLocation();
   sendRecordToSheet();
@@ -1019,3 +1063,323 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+// ================= 📸 완주 인증샷 포토 카드 렌더링 & 다운로드 =================
+function renderSnapshotCard() {
+  const canvas = elements.snapshotCanvas;
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  
+  canvas.width = 800;
+  canvas.height = 800;
+
+  // 1. 배경 드로잉 (인증샷 사진 또는 프리미엄 다크 러닝 테마)
+  if (state.snapshot.theme === 'photo' && state.snapshot.photoImg) {
+    const img = state.snapshot.photoImg;
+    const canvasRatio = canvas.width / canvas.height;
+    const imgRatio = img.width / img.height;
+    let sWidth, sHeight, sx, sy;
+
+    if (imgRatio > canvasRatio) {
+      sHeight = img.height;
+      sWidth = img.height * canvasRatio;
+      sx = (img.width - sWidth) / 2;
+      sy = 0;
+    } else {
+      sWidth = img.width;
+      sHeight = img.width / canvasRatio;
+      sx = 0;
+      sy = (img.height - sHeight) / 2;
+    }
+    ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
+
+    // 텍스트/경로 가독성을 위한 다크 비네팅 그라데이션 오버레이
+    const overlay = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    overlay.addColorStop(0, 'rgba(15, 23, 42, 0.75)');
+    overlay.addColorStop(0.35, 'rgba(15, 23, 42, 0.35)');
+    overlay.addColorStop(0.65, 'rgba(15, 23, 42, 0.65)');
+    overlay.addColorStop(1, 'rgba(9, 13, 22, 0.95)');
+    ctx.fillStyle = overlay;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } else {
+    // 다크 네온 러닝 테마 배경
+    const bgGrad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    bgGrad.addColorStop(0, '#0f172a');
+    bgGrad.addColorStop(0.5, '#1e293b');
+    bgGrad.addColorStop(1, '#090d16');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 격자 그리드 효과
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.07)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < canvas.width; x += 40) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+    }
+    for (let y = 0; y < canvas.height; y += 40) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+    }
+  }
+
+  // 2. 상단 헤더 (완주 배지 & 날짜)
+  ctx.save();
+  ctx.fillStyle = '#10b981';
+  ctx.beginPath();
+  roundRect(ctx, 36, 36, 170, 38, 19);
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 15px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🏃 FINISHER', 121, 55);
+  ctx.restore();
+
+  const now = state.endTime || new Date();
+  const dateStr = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+  ctx.fillStyle = 'rgba(248, 250, 252, 0.9)';
+  ctx.font = 'bold 16px -apple-system, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText(dateStr, canvas.width - 36, 60);
+
+  // 3. 내가 달린 GPS 경로 흔적 드로잉
+  drawRouteTrace(ctx, canvas);
+
+  // 4. 대형 거리 텍스트
+  const distNumber = state.totalDistanceKm.toFixed(2);
+  ctx.save();
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '900 86px -apple-system, sans-serif';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+  ctx.shadowBlur = 16;
+  ctx.fillText(distNumber, 42, 595);
+
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 28px -apple-system, sans-serif';
+  ctx.fillText('KM', 42 + ctx.measureText(distNumber).width + 12, 586);
+  ctx.restore();
+
+  // 5. 하단 3개 운동 지표 바 (운동시간, 평균 페이스, 소모 열량)
+  ctx.save();
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+  ctx.strokeStyle = 'rgba(51, 65, 85, 0.9)';
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, 36, 626, canvas.width - 72, 80, 16);
+  ctx.fill();
+  ctx.stroke();
+
+  const colWidth = (canvas.width - 72) / 3;
+  const metrics = [
+    { label: '⏱️ 운동 시간', val: formatDuration(state.elapsedSeconds) },
+    { label: '⚡ 평균 페이스', val: calculatePace(state.totalDistanceKm, state.elapsedSeconds) + ' /km' },
+    { label: '🔥 소모 열량', val: calculateCalories(state.student.sport, state.elapsedSeconds) + ' kcal' }
+  ];
+
+  metrics.forEach((m, idx) => {
+    const cx = 36 + colWidth * idx + colWidth / 2;
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '600 12px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(m.label, cx, 652);
+
+    ctx.fillStyle = '#f8fafc';
+    ctx.font = 'bold 18px -apple-system, sans-serif';
+    ctx.fillText(m.val, cx, 680);
+  });
+  ctx.restore();
+
+  // 6. 하단 학생 이름표 & 학교 워터마크
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 15px -apple-system, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(`👟 ${state.student.class} ${state.student.name} (${state.student.sport})`, 42, 755);
+
+  ctx.fillStyle = 'rgba(148, 163, 184, 0.75)';
+  ctx.font = '500 13px -apple-system, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('스마트 러닝 앱 • GPS VERIFIED', canvas.width - 42, 755);
+}
+
+// GPS 달린 흔적 경로 드로잉 함수
+function drawRouteTrace(ctx, canvas) {
+  const coords = state.coordinates;
+  ctx.save();
+
+  if (coords && coords.length >= 2) {
+    let minLat = Infinity, maxLat = -Infinity;
+    let minLng = Infinity, maxLng = -Infinity;
+
+    coords.forEach(([lat, lng]) => {
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+      if (lng < minLng) minLng = lng;
+      if (lng > maxLng) maxLng = lng;
+    });
+
+    const latSpan = Math.max(maxLat - minLat, 0.0002);
+    const lngSpan = Math.max(maxLng - minLng, 0.0002);
+
+    const boxX = 80, boxY = 130, boxW = canvas.width - 160, boxH = 340;
+    const scale = Math.min(boxW / lngSpan, boxH / latSpan);
+
+    const mapX = (lng) => boxX + (boxW - lngSpan * scale) / 2 + (lng - minLng) * scale;
+    const mapY = (lat) => boxY + (boxH - latSpan * scale) / 2 + (maxLat - lat) * scale;
+
+    // 네온 글로우 이동 경로 선
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 10;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.shadowColor = '#0284c7';
+    ctx.shadowBlur = 18;
+
+    ctx.beginPath();
+    coords.forEach(([lat, lng], i) => {
+      const px = mapX(lng);
+      const py = mapY(lat);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    });
+    ctx.stroke();
+
+    // 시작점 (녹색 핀)
+    const startP = coords[0];
+    ctx.fillStyle = '#10b981';
+    ctx.beginPath();
+    ctx.arc(mapX(startP[1]), mapY(startP[0]), 9, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 도착점 (주황 핀)
+    const endP = coords[coords.length - 1];
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.arc(mapX(endP[1]), mapY(endP[0]), 9, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // 좌표가 2개 미만일 때: 400m 육상 트랙 모양 루프 드로잉
+    const cx = canvas.width / 2;
+    const cy = 290;
+    const rx = 180;
+    const ry = 95;
+
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 8;
+    ctx.shadowColor = '#38bdf8';
+    ctx.shadowBlur = 16;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = '#10b981';
+    ctx.beginPath();
+    ctx.arc(cx - rx, cy, 9, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
+
+// 완주 인증샷 전용 카메라 모달 열기
+async function openSnapCameraModal() {
+  if (!elements.snapCameraModal) return;
+  elements.snapCameraModal.classList.add('active');
+
+  try {
+    state.snapshot.snapStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } },
+      audio: false
+    });
+    if (elements.snapVideo) {
+      elements.snapVideo.srcObject = state.snapshot.snapStream;
+    }
+  } catch (err) {
+    alert('카메라를 켤 수 없습니다: ' + err.message);
+    closeSnapCameraModal();
+  }
+}
+
+// 완주 인증샷 찰칵 캡처
+function captureSnapPhoto() {
+  if (!elements.snapVideo) return;
+  const video = elements.snapVideo;
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = video.videoWidth || 640;
+  tempCanvas.height = video.videoHeight || 640;
+  const ctx = tempCanvas.getContext('2d');
+
+  // 셀카 거울 반전
+  ctx.translate(tempCanvas.width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+
+  const img = new Image();
+  img.onload = () => {
+    state.snapshot.photoImg = img;
+    state.snapshot.theme = 'photo';
+    renderSnapshotCard();
+  };
+  img.src = tempCanvas.toDataURL('image/jpeg', 0.9);
+
+  closeSnapCameraModal();
+}
+
+function closeSnapCameraModal() {
+  if (state.snapshot.snapStream) {
+    state.snapshot.snapStream.getTracks().forEach(t => t.stop());
+    state.snapshot.snapStream = null;
+  }
+  if (elements.snapCameraModal) {
+    elements.snapCameraModal.classList.remove('active');
+  }
+}
+
+// 앨범에서 사진 불러오기
+function handleSnapFileUpload(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    const img = new Image();
+    img.onload = () => {
+      state.snapshot.photoImg = img;
+      state.snapshot.theme = 'photo';
+      renderSnapshotCard();
+    };
+    img.src = event.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// 완주 인증샷 포토 카드 이미지 다운로드
+function downloadSnapshotImage() {
+  const canvas = elements.snapshotCanvas;
+  if (!canvas) return;
+
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+  const filename = `러닝완주_${state.student.class}_${state.student.name}_${dateStr}.png`;
+
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = canvas.toDataURL('image/png');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  alert(`🎉 완주 인증샷 포토 카드가 저장되었습니다!\n파일명: ${filename}`);
+}
+

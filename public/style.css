@@ -722,3 +722,79 @@ body {
   font-weight: 700;
   color: #38bdf8;
 }
+
+/* ================= 완주 인증샷 포토 카드 ================= */
+.photo-card-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #0f172a;
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.photo-card-canvas-wrapper {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  background: #111827;
+}
+
+#snapshotCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+
+.photo-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-card-action {
+  flex: 1;
+  padding: 8px 6px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #1e293b;
+  color: #f8fafc;
+  border: 1px solid var(--card-border);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: background 0.15s;
+}
+
+.btn-card-action:active {
+  background: #334155;
+}
+
+.btn-download-card {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  padding: 13px;
+  font-size: 14px;
+  font-weight: 800;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+  transition: transform 0.1s;
+}
+
+.btn-download-card:active {
+  transform: scale(0.98);
+}
+
