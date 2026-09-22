@@ -54,6 +54,13 @@ const state = {
     photoImg: null,
     theme: 'photo', // 'photo' | 'dark'
     snapStream: null
+  },
+
+  // 대시보드 실시간 필터 & 데이터
+  dashboard: {
+    filter: 'today', // 오늘이 기본값!
+    allRecords: [],
+    summary: {}
   }
 };
 
@@ -135,6 +142,11 @@ const elements = {
   sumAvgPace: document.getElementById('sumAvgPace'),
   sheetUpdatedTime: document.getElementById('sheetUpdatedTime'),
   sheetRecordsBody: document.getElementById('sheetRecordsBody'),
+  btnFilterToday: document.getElementById('btnFilterToday'),
+  btnFilterAll: document.getElementById('btnFilterAll'),
+  todayDateBadge: document.getElementById('todayDateBadge'),
+  chartContainer: document.getElementById('chartContainer'),
+  chartSubtext: document.getElementById('chartSubtext'),
   
   // 프로필 설정
   settingAvatarPreview: document.getElementById('settingAvatarPreview'),
@@ -687,6 +699,22 @@ function bindEvents() {
   if (elements.btnDownloadSnapCard) {
     elements.btnDownloadSnapCard.addEventListener('click', downloadSnapshotImage);
   }
+
+  // 9. 실시간 대시보드 날짜 필터 조작
+  if (elements.btnFilterToday) {
+    elements.btnFilterToday.addEventListener('click', () => setDashboardFilter('today'));
+  }
+  if (elements.btnFilterAll) {
+    elements.btnFilterAll.addEventListener('click', () => setDashboardFilter('all'));
+  }
+
+  // 대시보드 5초 주기 실시간 자동 동기화 (Auto-poll)
+  setInterval(() => {
+    const dashboardTab = document.getElementById('dashboardTab');
+    if (dashboardTab && dashboardTab.classList.contains('active')) {
+      fetchSheetData();
+    }
+  }, 5000);
 }
 
 // ================= 즉석 온보딩 완료 =================
@@ -1022,6 +1050,7 @@ function calculateCalories(sport, durationSeconds) {
 
 // ================= 구글 스프레드시트 데이터 전송 =================
 async function sendRecordToSheet() {
+  const todayStr = new Date().toISOString().slice(0, 10);
   const payload = {
     name: state.student.name,
     studentClass: state.student.class,
@@ -1031,7 +1060,8 @@ async function sendRecordToSheet() {
     duration: formatDuration(state.elapsedSeconds),
     distance: state.totalDistanceKm.toFixed(2) + ' km',
     calories: calculateCalories(state.student.sport, state.elapsedSeconds) + ' kcal',
-    pace: calculatePace(state.totalDistanceKm, state.elapsedSeconds)
+    pace: calculatePace(state.totalDistanceKm, state.elapsedSeconds),
+    date: todayStr
   };
 
   elements.sheetSendStatus.style.color = '#38bdf8';
@@ -1080,7 +1110,7 @@ async function sendRecordToSheet() {
   }
 }
 
-// ================= 구글 스프레드시트 실시간 데이터 조회 =================
+// ================= 구글 스프레드시트 실시간 데이터 조회 & 오늘 기본값 차트 =================
 async function fetchSheetData() {
   try {
     elements.sheetUpdatedTime.textContent = '동기화 중...';
@@ -1090,30 +1120,150 @@ async function fetchSheetData() {
     const data = await res.json();
     if (!data.success) throw new Error(data.error);
 
-    elements.sumStudentCount.textContent = data.summary.studentCount || '-';
-    elements.sumTotalTime.textContent = data.summary.totalTime || '-';
-    elements.sumTotalCalories.textContent = data.summary.totalCalories || '-';
-    elements.sumAvgPace.textContent = data.summary.avgPace || '-';
-    elements.sheetUpdatedTime.textContent = new Date().toLocaleTimeString('ko-KR') + ' 갱신됨';
+    state.dashboard.allRecords = data.records || [];
+    state.dashboard.summary = data.summary || {};
+    elements.sheetUpdatedTime.textContent = new Date().toLocaleTimeString('ko-KR') + ' 갱신';
 
-    if (data.records && data.records.length > 0) {
-      elements.sheetRecordsBody.innerHTML = data.records.map(r => `
-        <tr>
-          <td style="font-weight:700; color:#f8fafc;">${escapeHtml(r.name)}</td>
-          <td><span style="background:#334155; padding:2px 6px; border-radius:6px; font-size:11px;">${escapeHtml(r.studentClass)}</span></td>
-          <td style="color:#34d399;">${escapeHtml(r.sport)}</td>
-          <td style="color:#94a3b8;">${escapeHtml(r.startTime)}</td>
-          <td style="color:#94a3b8;">${escapeHtml(r.endTime)}</td>
-          <td style="font-weight:600; color:#38bdf8;">${escapeHtml(r.duration)}</td>
-          <td style="font-weight:600;">${escapeHtml(r.distance)}</td>
-          <td style="color:#f59e0b;">${escapeHtml(r.calories)}</td>
-          <td style="color:#a78bfa;">${escapeHtml(r.pace)}</td>
-        </tr>
-      `).join('');
-    }
+    renderDashboardView();
   } catch (err) {
     console.error('시트 조회 오류:', err);
-    elements.sheetUpdatedTime.textContent = '오류 발생';
+    elements.sheetUpdatedTime.textContent = '동기화 대기';
+  }
+}
+
+function setDashboardFilter(filterMode) {
+  state.dashboard.filter = filterMode;
+  if (filterMode === 'today') {
+    if (elements.btnFilterToday) {
+      elements.btnFilterToday.classList.add('active');
+      elements.btnFilterToday.style.borderColor = '#38bdf8';
+    }
+    if (elements.btnFilterAll) {
+      elements.btnFilterAll.classList.remove('active');
+      elements.btnFilterAll.style.borderColor = '#334155';
+    }
+    if (elements.chartSubtext) elements.chartSubtext.textContent = '오늘 기록 기준';
+  } else {
+    if (elements.btnFilterAll) {
+      elements.btnFilterAll.classList.add('active');
+      elements.btnFilterAll.style.borderColor = '#38bdf8';
+    }
+    if (elements.btnFilterToday) {
+      elements.btnFilterToday.classList.remove('active');
+      elements.btnFilterToday.style.borderColor = '#334155';
+    }
+    if (elements.chartSubtext) elements.chartSubtext.textContent = '전체 누적 기록 기준';
+  }
+  renderDashboardView();
+}
+
+function renderDashboardView() {
+  const all = state.dashboard.allRecords || [];
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  if (elements.todayDateBadge) {
+    elements.todayDateBadge.textContent = `${now.getMonth() + 1}.${now.getDate()}`;
+  }
+
+  // 1. 날짜 필터링 (오늘이 기본값!)
+  let filtered = all;
+  if (state.dashboard.filter === 'today') {
+    filtered = all.filter(r => (r.date || todayStr) === todayStr);
+    if (filtered.length === 0 && all.length > 0) {
+      filtered = all; // 데이터가 있으면 기본 표시
+    }
+  }
+
+  // 2. 요약 4대 통계 동적 계산
+  let totalSeconds = 0;
+  let totalCalories = 0;
+  let totalDistKm = 0;
+
+  filtered.forEach(r => {
+    if (r.duration) {
+      const parts = r.duration.split(':').map(Number);
+      if (parts.length === 3) {
+        totalSeconds += (parts[0] * 3600 + parts[1] * 60 + parts[2]);
+      }
+    }
+    const calMatch = (r.calories || '').match(/(\d+)/);
+    if (calMatch) totalCalories += parseInt(calMatch[1], 10);
+
+    const distMatch = (r.distance || '').match(/([\d.]+)/);
+    if (distMatch) totalDistKm += parseFloat(distMatch[1]);
+  });
+
+  elements.sumStudentCount.textContent = `${filtered.length}명`;
+  elements.sumTotalTime.textContent = formatDuration(totalSeconds);
+  elements.sumTotalCalories.textContent = `${totalCalories.toLocaleString()} kcal`;
+  elements.sumAvgPace.textContent = calculatePace(totalDistKm, totalSeconds) + ' /km';
+
+  // 3. 실시간 랭킹 막대 차트 (거리 기준 내림차순 정렬)
+  const ranked = [...filtered].sort((a, b) => {
+    const distA = parseFloat(a.distance) || 0;
+    const distB = parseFloat(b.distance) || 0;
+    return distB - distA;
+  });
+
+  const maxDistance = ranked.length > 0 ? Math.max(...ranked.map(r => parseFloat(r.distance) || 0), 1) : 1;
+
+  if (ranked.length > 0 && elements.chartContainer) {
+    elements.chartContainer.innerHTML = ranked.slice(0, 6).map((r, idx) => {
+      const distVal = parseFloat(r.distance) || 0;
+      const percent = Math.min(Math.max((distVal / maxDistance) * 100, 18), 100);
+      const medals = ['🥇 1위', '🥈 2위', '🥉 3위'];
+      const rankBadge = medals[idx] || `${idx + 1}위`;
+      const sportIcon = getSportEmoji(r.sport);
+
+      return `
+        <div class="chart-bar-row">
+          <div class="chart-bar-header">
+            <span class="chart-rank-badge">
+              <span>${rankBadge}</span>
+              <span style="color:#f8fafc; margin-left:4px;">${escapeHtml(r.studentClass)} ${escapeHtml(r.name)}</span>
+              <span>${sportIcon}</span>
+            </span>
+            <span style="color:#38bdf8; font-weight:800;">
+              ${escapeHtml(r.distance)} <span style="font-size:10px; color:#94a3b8; font-weight:400;">(${escapeHtml(r.pace)}/km)</span>
+            </span>
+          </div>
+          <div class="chart-bar-track">
+            <div class="chart-bar-fill" style="width: ${percent}%;"></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } else if (elements.chartContainer) {
+    elements.chartContainer.innerHTML = `
+      <div style="text-align:center; padding:16px; color:#64748b; font-size:12px;">
+        오늘 기록된 운동이 없습니다. 첫 번째로 달려보세요!
+      </div>
+    `;
+  }
+
+  // 4. 테이블 렌더링
+  if (filtered.length > 0) {
+    elements.sheetRecordsBody.innerHTML = filtered.map(r => `
+      <tr>
+        <td style="font-weight:700; color:#f8fafc;">${escapeHtml(r.name)}</td>
+        <td><span style="background:#334155; padding:2px 6px; border-radius:6px; font-size:11px;">${escapeHtml(r.studentClass)}</span></td>
+        <td style="color:#34d399;">${escapeHtml(r.sport)}</td>
+        <td style="color:#94a3b8;">${escapeHtml(r.startTime)}</td>
+        <td style="color:#94a3b8;">${escapeHtml(r.endTime)}</td>
+        <td style="font-weight:600; color:#38bdf8;">${escapeHtml(r.duration)}</td>
+        <td style="font-weight:600;">${escapeHtml(r.distance)}</td>
+        <td style="color:#f59e0b;">${escapeHtml(r.calories)}</td>
+        <td style="color:#a78bfa;">${escapeHtml(r.pace)}</td>
+      </tr>
+    `).join('');
+  } else {
+    elements.sheetRecordsBody.innerHTML = `
+      <tr>
+        <td colspan="9" style="text-align:center; padding:20px; color:#64748b;">
+          선택한 날짜의 운동 기록이 없습니다.
+        </td>
+      </tr>
+    `;
   }
 }
 

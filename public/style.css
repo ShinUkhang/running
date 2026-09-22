@@ -798,3 +798,43 @@ body {
   transform: scale(0.98);
 }
 
+/* ================= 실시간 차트 바 & 랭킹 스타일 ================= */
+.chart-bar-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(30, 41, 59, 0.4);
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+}
+
+.chart-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+}
+
+.chart-rank-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 800;
+}
+
+.chart-bar-track {
+  height: 8px;
+  background: #0f172a;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.chart-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #0284c7, #38bdf8);
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+

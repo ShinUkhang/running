@@ -158,8 +158,33 @@
           <span>📊</span> 구글 스프레드시트 실시간 대시보드
           <button id="btnRefreshSheet" style="margin-left:auto; background:none; border:none; color:#38bdf8; font-size:16px; cursor:pointer;" title="새로고침">🔄</button>
         </div>
-        
-        <!-- 상단 요약 4대 통계 -->
+
+        <!-- 📅 날짜 필터 (오늘이 기본값!) -->
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; gap:6px;">
+            <button type="button" class="tab-btn active" id="btnFilterToday" style="flex:unset; padding:6px 12px; border-radius:10px; border:1px solid #38bdf8; font-size:12px; font-weight:700;">
+              📅 오늘 (<span id="todayDateBadge">오늘</span>)
+            </button>
+            <button type="button" class="tab-btn" id="btnFilterAll" style="flex:unset; padding:6px 12px; border-radius:10px; border:1px solid #334155; font-size:12px; font-weight:700;">
+              전체 누적
+            </button>
+          </div>
+          <div style="font-size:11px; color:#10b981; display:flex; align-items:center; gap:5px; font-weight:600;">
+            <span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:#10b981; box-shadow:0 0 8px #10b981;"></span>
+            실시간 자동 동기화 중
+          </div>
+        </div>
+
+        <!-- 🏃 실시간 시각화 차트 섹션 -->
+        <div style="background:#0f172a; border:1px solid #334155; border-radius:14px; padding:12px; margin-bottom:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-size:12px; font-weight:800; color:#38bdf8;">🏃‍♂️ 학생별 달린 거리 실시간 랭킹</span>
+            <span id="chartSubtext" style="font-size:11px; color:#94a3b8;">오늘 기록 기준</span>
+          </div>
+          <div id="chartContainer" style="display:flex; flex-direction:column; gap:6px;">
+            <!-- 학생 랭킹 바 차트 동적 생성 -->
+          </div>
+        </div>
         <div class="sheet-summary-grid">
           <div class="summary-card">
             <div class="summary-lbl">👥 참여 학생 수</div>

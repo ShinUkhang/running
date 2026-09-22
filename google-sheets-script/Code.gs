@@ -14,7 +14,9 @@
 
 function doPost(e) {
   try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    // gid=0인 첫 번째 시트를 명시적으로 타겟팅합니다.
+    var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = spreadsheet.getSheets()[0];
     var data = {};
     
     if (e.postData && e.postData.contents) {
@@ -32,14 +34,15 @@ function doPost(e) {
     var distance = data.distance || "0.0 km";
     var calories = data.calories || "0 kcal";
     var pace = data.pace || "--:--";
+    var date = data.date || Utilities.formatDate(new Date(), "Asia/Seoul", "yyyy-MM-dd");
 
-    // 12행부터 데이터가 시작되므로, 시트의 마지막 행을 찾아 추가합니다.
+    // 시트의 마지막 데이터 행 다음에 추가합니다.
     var lastRow = sheet.getLastRow();
-    var targetRow = Math.max(lastRow + 1, 12);
+    var targetRow = Math.max(lastRow + 1, 4);
 
     // 컬럼 매핑:
-    // B열: 이름, C열: 학급, D열: 종목, E열: 출발시간, F열: 종료시간,
-    // G열: 운동시간, H열: 거리, I열: 소모열량, J열: 페이스
+    // A: 빈칸, B: 이름, C: 학급, D: 종목, E: 출발시간, F: 종료시간,
+    // G: 운동시간, H: 거리, I: 소모열량, J: 페이스, K: 날짜
     var rowData = [
       "",             // A열 (공백)
       name,           // B열 (이름)
@@ -50,7 +53,8 @@ function doPost(e) {
       duration,       // G열 (운동시간)
       distance,       // H열 (거리)
       calories,       // I열 (소모열량)
-      pace            // J열 (페이스)
+      pace,           // J열 (페이스)
+      date            // K열 (날짜)
     ];
 
     sheet.getRange(targetRow, 1, 1, rowData.length).setValues([rowData]);
