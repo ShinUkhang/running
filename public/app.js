@@ -377,10 +377,10 @@ function initMap() {
     zoomControl: false
   }).setView([defaultLat, defaultLng], 16);
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-    subdomains: 'abcd',
-    maxZoom: 20
+  // 워터마크 및 API 키가 절대 필요 없는 100% 무료 공식 OpenStreetMap 타일 사용
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19
   }).addTo(state.map);
 
   // 내 캐릭터 마커 초기화
