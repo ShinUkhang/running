@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>학생 러닝 트래커 - 스마트 운동 기록</title>
+  <title>학생 러닝 트래커 - 스마트 운동 기록 & 소셜 러닝</title>
   
-  <!-- Leaflet Map CSS (API 키 없이도 즉시 작동하는 기본 맵 엔진) -->
+  <!-- Leaflet Map CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   <!-- App Style -->
   <link rel="stylesheet" href="style.css">
@@ -19,9 +19,19 @@
       <span class="logo-icon">🏃</span>
       <span class="logo-text">스마트 러닝앱</span>
     </div>
-    <div class="gps-badge" id="gpsStatusBadge">
-      <span class="gps-dot" id="gpsDot"></span>
-      <span id="gpsStatusText">GPS 대기중</span>
+    
+    <div class="nav-badges">
+      <!-- 실시간 친구 접속 배지 -->
+      <div class="friend-count-badge" id="friendCountBadge" title="현재 접속 중인 학생 수">
+        <span>👥</span>
+        <span id="friendsCount">1</span>명
+      </div>
+
+      <!-- GPS 상태 배지 -->
+      <div class="gps-badge" id="gpsStatusBadge">
+        <span class="gps-dot" id="gpsDot"></span>
+        <span id="gpsStatusText">GPS 대기중</span>
+      </div>
     </div>
   </header>
 
@@ -34,7 +44,7 @@
       <span>📊</span> 실시간 시트 현황
     </button>
     <button class="tab-btn" data-tab="settingsTab">
-      <span>⚙️</span> 설정 & 가이드
+      <span>⚙️</span> 설정 & 프로필
     </button>
   </nav>
 
@@ -44,8 +54,9 @@
     <div class="map-wrapper">
       <div id="map"></div>
       
-      <!-- 지도 위 상태 배지 -->
+      <!-- 내 상태 배지 (아바타 포함) -->
       <div class="user-status-pill" id="userStatusPill">
+        <img id="pillAvatarImg" class="pill-avatar" src="" alt="아바타">
         <span id="pillClassBadge">1-1</span>
         <span id="pillNameBadge">김민준</span>
         <span style="color:#38bdf8;">•</span>
@@ -55,7 +66,7 @@
       <!-- 지도 컨트롤 버튼들 -->
       <div class="map-overlay-controls">
         <button class="map-control-btn" id="btnCenterMap" title="내 위치로 이동">🎯</button>
-        <button class="map-control-btn" id="btnFitBounds" title="전체 경로 보기">🔍</button>
+        <button class="map-control-btn" id="btnFitBounds" title="전체 친구 및 경로 보기">🔍</button>
         <button class="map-control-btn" id="btnToggleSimulate" title="테스트용 가상 달리기 시뮬레이션">🏃‍♂️</button>
       </div>
     </div>
@@ -75,7 +86,7 @@
           <div class="metric-header">
             <span>🏁</span> 출발 시간
           </div>
-          <div class="metric-number" id="metricStartTime" style="font-size:18px;">--:--:--</div>
+          <div class="metric-number" id="metricStartTime" style="font-size:17px;">--:--:--</div>
         </div>
 
         <!-- 이동 거리 -->
@@ -193,13 +204,19 @@
     </div>
   </section>
 
-  <!-- ================= 탭 3: 설정 및 가이드 ================= -->
+  <!-- ================= 탭 3: 설정 & 프로필 ================= -->
   <section class="tab-content" id="settingsTab">
     <div class="content-padded">
       <!-- 학생 프로필 설정 -->
       <div class="card">
         <div class="card-title">
-          <span>👤</span> 학생 본인 정보 설정
+          <span>👤</span> 내 프로필 & 아바타 변경
+        </div>
+        <div style="display:flex; align-items:center; gap:14px; margin-bottom:14px;">
+          <img id="settingAvatarPreview" class="pill-avatar" style="width:54px; height:54px; border:2px solid #38bdf8;" src="" alt="내 캐릭터">
+          <button class="btn-camera btn-snap" id="btnRetakeFromSettings" style="flex:unset; padding:8px 14px;">
+            📸 얼굴 사진 다시 찍기
+          </button>
         </div>
         <div class="form-group">
           <label class="form-label">학생 이름</label>
@@ -238,44 +255,22 @@
         <button class="btn-main btn-resume" id="btnSaveGasUrl" style="padding:10px; font-size:14px;">
           연동 URL 저장
         </button>
-        <div style="margin-top:10px; font-size:12px; color:#38bdf8;">
-          💡 프로젝트 내 <code>google-sheets-script/Code.gs</code> 배포 30초 안내서가 포함되어 있습니다.
-        </div>
-      </div>
-
-      <!-- 지도 설정 -->
-      <div class="card">
-        <div class="card-title">
-          <span>🗺️</span> 지도 설정 (구글 지도 / 기본 지도)
-        </div>
-        <div class="form-group">
-          <label class="form-label">Google Maps JavaScript API 키 (선택사항)</label>
-          <input type="text" class="form-input" id="settingGoogleMapsKey" placeholder="AIzaSy...">
-          <span style="font-size:11px; color:#64748b; margin-top:4px; display:block;">
-            * 구글 지도 API 키가 없어도 고해상도 오픈스트리트맵 엔진으로 즉시 위치 및 경로가 정상 표시됩니다.
-          </span>
-        </div>
-        <button class="btn-main btn-start" id="btnSaveMapKey" style="padding:10px; font-size:14px;">
-          지도 키 저장 및 적용
-        </button>
       </div>
     </div>
   </section>
 </div>
 
-<!-- ================= 모달 1: 위치 정보 권한 동의 ================= -->
+<!-- ================= 모달 1: 현장 즉석 가입 & 얼굴 촬영 아바타 생성 ================= -->
 <div class="modal-backdrop active" id="consentModal">
   <div class="modal-card">
-    <div class="modal-icon">📍</div>
-    <div class="modal-title">위치 정보 이용 동의</div>
+    <div class="modal-icon">📸</div>
+    <div class="modal-title">스마트 러닝앱 즉석 참여</div>
     <div class="modal-desc">
-      정확한 러닝 경로 트래킹, 이동 거리, 페이스 및 열량 측정을 위해 
-      기기의 <strong>GPS 위치 정보 수집</strong>에 동의해 주셔야 합니다.
-      <br><br>
-      수집된 운동 데이터는 학교 체육 스프레드시트 기록 외에 다른 목적으로 사용되지 않습니다.
+      얼굴 사진을 찍어 <strong>나만의 달리기 캐릭터</strong>를 만들어보세요!<br>
+      지도 위에 내 얼굴과 친구들의 캐릭터가 함께 달립니다.
     </div>
 
-    <!-- 학생 간편 입력 -->
+    <!-- 1단계: 학생 기본 정보 -->
     <div style="background:#0f172a; padding:12px; border-radius:12px; border:1px solid #334155;">
       <div class="form-group" style="margin-bottom:8px;">
         <label class="form-label">학생 이름</label>
@@ -287,7 +282,7 @@
           <input type="text" class="form-input" id="initStudentClass" placeholder="예: 1-1" value="1-1">
         </div>
         <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">종목</label>
+          <label class="form-label">운동 종목</label>
           <select class="form-select" id="initSportType">
             <option value="러닝" selected>🏃 러닝</option>
             <option value="조깅">👟 조깅</option>
@@ -298,8 +293,37 @@
       </div>
     </div>
 
+    <!-- 2단계: 카메라 셀카 촬영 뷰파인더 -->
+    <div class="camera-box">
+      <div class="viewfinder-wrapper">
+        <video id="cameraVideo" autoplay playsinline muted></video>
+        <img id="avatarPreviewImg" alt="아바타 미리보기">
+        <div class="camera-guide-ring"></div>
+      </div>
+
+      <div class="camera-action-row">
+        <button type="button" class="btn-camera btn-snap" id="btnCapturePhoto">
+          <span>📷</span> 찰칵! 얼굴 찍기
+        </button>
+        <button type="button" class="btn-camera btn-retake" id="btnRetakePhoto" style="display:none;">
+          <span>🔄</span> 다시 찍기
+        </button>
+      </div>
+
+      <!-- 카메라 미사용 시 대체 이모지 프리셋 -->
+      <div style="font-size:11px; color:#94a3b8; text-align:center;">또는 캐릭터 이모지 선택</div>
+      <div class="avatar-preset-row">
+        <button type="button" class="avatar-preset-btn selected" data-emoji="🐯">🐯</button>
+        <button type="button" class="avatar-preset-btn" data-emoji="🐰">🐰</button>
+        <button type="button" class="avatar-preset-btn" data-emoji="🦁">🦁</button>
+        <button type="button" class="avatar-preset-btn" data-emoji="🐼">🐼</button>
+        <button type="button" class="avatar-preset-btn" data-emoji="🤖">🤖</button>
+      </div>
+    </div>
+
+    <!-- 위치 동의 및 입장 완료 버튼 -->
     <button class="btn-main btn-start" id="btnAgreeLocation">
-      <span>✅</span> 동의하고 앱 시작하기
+      <span>🚀</span> 위치 동의하고 친구들과 달리기 시작!
     </button>
   </div>
 </div>
@@ -357,6 +381,11 @@
   </div>
 </div>
 
+<!-- 얼굴 아바타 캡처용 숨김 캔버스 -->
+<canvas id="avatarCanvas" width="120" height="120" style="display:none;"></canvas>
+
+<!-- Socket.io 클라이언트 라이브러리 -->
+<script src="/socket.io/socket.io.js"></script>
 <!-- Leaflet Library JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <!-- Main App Script -->

@@ -1,13 +1,24 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const http = require('http');
+const { Server } = require('socket.io');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  },
+  maxHttpBufferSize: 1e7 // 아바타 썸네일(base64) 허용을 위해 10MB 버퍼
+});
+
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // 기본 구글 스프레드시트 설정
@@ -25,7 +36,6 @@ app.get('/api/sheet-data', async (req, res) => {
 
     const csvText = await response.text();
     const lines = csvText.split('\n').map(line => {
-      // CSV 파서 (따옴표 처리)
       const values = [];
       let current = '';
       let inQuotes = false;
@@ -44,7 +54,6 @@ app.get('/api/sheet-data', async (req, res) => {
       return values;
     });
 
-    // 3번 인덱스부터 학생 개별 데이터 (김민준, 이서연 등)
     const records = [];
     let calculatedTotalKcal = 0;
     for (let i = 3; i < lines.length; i++) {
@@ -70,7 +79,6 @@ app.get('/api/sheet-data', async (req, res) => {
       });
     }
 
-    // 1번 인덱스: 요약 데이터 ("10명", "7:04:25", ..., "05:46 /km")
     const summaryRow = lines[1] || [];
     const summary = {
       studentCount: summaryRow[1] || `${records.length}명`,
@@ -131,10 +139,89 @@ app.post('/api/record', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+// ================= Socket.io 실시간 위치 & 캐릭터 공유 =================
+// 활성 접속 학생 맵 (socket.id => 학생 데이터)
+const activeUsers = new Map();
+
+io.on('connection', (socket) => {
+  console.log(`[Socket] 새 학생 연결됨: ${socket.id}`);
+
+  // 1. 학생 가입 및 캐릭터 등록
+  socket.on('user:join', (userData) => {
+    const user = {
+      socketId: socket.id,
+      id: userData.id || socket.id,
+      name: userData.name || '익명 학생',
+      studentClass: userData.studentClass || '1-1',
+      sport: userData.sport || '러닝',
+      avatar: userData.avatar || '', // base64 또는 이모지
+      lat: userData.lat || 37.5665,
+      lng: userData.lng || 126.9780,
+      distance: userData.distance || '0.0 km',
+      pace: userData.pace || '--:--',
+      status: userData.status || '대기중',
+      lastSeen: Date.now()
+    };
+
+    activeUsers.set(socket.id, user);
+
+    // 새 접속자에게 기존에 달리고 있는 친구들 목록 전송
+    const allFriends = Array.from(activeUsers.values()).filter(u => u.socketId !== socket.id);
+    socket.emit('users:list', allFriends);
+
+    // 다른 모든 친구들에게 새 친구 등장 브로드캐스트
+    socket.broadcast.emit('user:joined', user);
+
+    // 전체 활성 접속자 수 갱신 알림
+    io.emit('users:count', activeUsers.size);
+
+    console.log(`[Socket] ${user.name}(${user.studentClass}) 참여 완료 (총 ${activeUsers.size}명 접속 중)`);
+  });
+
+  // 2. 실시간 GPS 위치 및 운동 메트릭 갱신
+  socket.on('user:location', (locData) => {
+    const user = activeUsers.get(socket.id);
+    if (!user) return;
+
+    user.lat = locData.lat;
+    user.lng = locData.lng;
+    user.distance = locData.distance || user.distance;
+    user.pace = locData.pace || user.pace;
+    user.status = locData.status || user.status;
+    user.lastSeen = Date.now();
+
+    // 다른 모든 친구들에게 위치 변경 브로드캐스트
+    socket.broadcast.emit('user:location_updated', {
+      socketId: socket.id,
+      id: user.id,
+      name: user.name,
+      studentClass: user.studentClass,
+      sport: user.sport,
+      lat: user.lat,
+      lng: user.lng,
+      distance: user.distance,
+      pace: user.pace,
+      status: user.status
+    });
+  });
+
+  // 3. 학생 퇴장 / 연결 종료
+  socket.on('disconnect', () => {
+    const user = activeUsers.get(socket.id);
+    if (user) {
+      console.log(`[Socket] ${user.name}(${user.studentClass}) 퇴장`);
+      activeUsers.delete(socket.id);
+      io.emit('user:left', { socketId: socket.id, id: user.id, name: user.name });
+      io.emit('users:count', activeUsers.size);
+    }
+  });
+});
+
+server.listen(PORT, () => {
   console.log(`====================================================`);
-  console.log(`🏃 학생 러닝 앱 서버가 실행되었습니다!`);
+  console.log(`🏃 학생 러닝 앱 & 실시간 소셜 서버가 실행되었습니다!`);
   console.log(`📡 로컬 접속 주소: http://localhost:${PORT}`);
+  console.log(`👥 실시간 멀티플레이어 위치 동기화: Socket.io 활성화`);
   console.log(`📊 구글 시트 ID: ${SPREADSHEET_ID}`);
   console.log(`====================================================`);
 });
