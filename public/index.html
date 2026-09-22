@@ -221,11 +221,18 @@
         <div class="card-title">
           <span>👤</span> 내 프로필 & 아바타 변경
         </div>
-        <div style="display:flex; align-items:center; gap:14px; margin-bottom:14px;">
-          <img id="settingAvatarPreview" class="pill-avatar" style="width:54px; height:54px; border:2px solid #38bdf8;" src="" alt="내 캐릭터">
-          <button class="btn-camera btn-snap" id="btnRetakeFromSettings" style="flex:unset; padding:8px 14px;">
-            📸 얼굴 사진 다시 찍기
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+          <img id="settingAvatarPreview" class="pill-avatar" style="width:56px; height:56px; border:2px solid #38bdf8;" src="" alt="내 캐릭터">
+          <button type="button" class="btn-camera btn-snap" id="btnRetakeFromSettings" style="flex:unset; padding:8px 12px;">
+            📸 얼굴 촬영
           </button>
+          <label class="btn-camera" style="flex:unset; padding:8px 12px; background:#1e293b; border:1px solid #334155; color:#f8fafc; cursor:pointer; margin:0;">
+            <span>🖼️</span> 앨범 사진
+            <input type="file" id="settingAvatarFile" accept="image/*" style="display:none;">
+          </label>
+        </div>
+        <div style="font-size:11px; color:#10b981; margin-bottom:10px; display:flex; align-items:center; gap:4px;">
+          <span>✅</span> 입력 즉시 자동으로 저장 및 지도에 실시간 반영됩니다.
         </div>
         <div class="form-group">
           <label class="form-label">학생 이름</label>
@@ -245,7 +252,7 @@
           </select>
         </div>
         <button class="btn-main btn-start" id="btnSaveStudentInfo" style="padding:10px; font-size:14px;">
-          정보 저장
+          정보 저장 (수동 저장)
         </button>
       </div>
 

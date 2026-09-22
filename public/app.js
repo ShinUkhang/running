@@ -142,6 +142,7 @@ const elements = {
   settingStudentName: document.getElementById('settingStudentName'),
   settingStudentClass: document.getElementById('settingStudentClass'),
   settingSportType: document.getElementById('settingSportType'),
+  settingAvatarFile: document.getElementById('settingAvatarFile'),
   btnSaveStudentInfo: document.getElementById('btnSaveStudentInfo'),
   settingGasUrl: document.getElementById('settingGasUrl'),
   btnSaveGasUrl: document.getElementById('btnSaveGasUrl'),
@@ -204,6 +205,31 @@ function updateProfileUI() {
   elements.settingStudentClass.value = state.student.class;
   elements.settingSportType.value = state.student.sport;
   elements.settingAvatarPreview.src = state.student.avatar;
+}
+
+// 프로필 실시간 자동 동기화 및 저장
+function applyStudentProfileChanges(notifyFriends = true) {
+  const newName = (elements.settingStudentName.value || elements.initStudentName.value || state.student.name || '김민준').trim();
+  const newClass = (elements.settingStudentClass.value || elements.initStudentClass.value || state.student.class || '1-1').trim();
+  const newSport = elements.settingSportType.value || elements.initSportType.value || state.student.sport || '러닝';
+
+  state.student.name = newName;
+  state.student.class = newClass;
+  state.student.sport = newSport;
+
+  localStorage.setItem('running_student', JSON.stringify(state.student));
+  updateProfileUI();
+
+  // 지도 위 내 캐릭터 마커 즉시 갱신
+  if (state.lastPosition && state.map) {
+    updateMyMarker(state.lastPosition[0], state.lastPosition[1]);
+  }
+
+  // 친구들에게 즉시 브로드캐스트
+  if (notifyFriends) {
+    joinSocialRoom();
+    emitMyLocation();
+  }
 }
 
 // ================= 카메라 얼굴 셀카 촬영 =================
@@ -558,21 +584,78 @@ function bindEvents() {
   // 6. 대시보드 새로고침
   elements.btnRefreshSheet.addEventListener('click', fetchSheetData);
 
-  // 7. 프로필 변경
+  // 7. 프로필 변경 및 실시간 자동 동기화
   elements.btnRetakeFromSettings.addEventListener('click', () => {
+    // 카메라 재시작 후 모달 열기
     elements.consentModal.classList.add('active');
+    initCamera();
     retakePhoto();
   });
 
+  // 앨범에서 사진 선택 시 즉시 내 아바타로 크롭 및 반영
+  if (elements.settingAvatarFile) {
+    elements.settingAvatarFile.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = elements.avatarCanvas;
+          const ctx = canvas.getContext('2d');
+          canvas.width = 120;
+          canvas.height = 120;
+
+          const size = Math.min(img.width, img.height);
+          const sx = (img.width - size) / 2;
+          const sy = (img.height - size) / 2;
+          ctx.drawImage(img, sx, sy, size, size, 0, 0, 120, 120);
+
+          state.student.avatar = canvas.toDataURL('image/jpeg', 0.85);
+          applyStudentProfileChanges(true);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // 사용자가 글자를 타이핑하거나 종목을 바꾸면 버튼 안 눌러도 '즉시 자동 저장 및 지도 실시간 반영'!
+  elements.settingStudentName.addEventListener('input', () => {
+    elements.initStudentName.value = elements.settingStudentName.value;
+    applyStudentProfileChanges(true);
+  });
+
+  elements.settingStudentClass.addEventListener('input', () => {
+    elements.initStudentClass.value = elements.settingStudentClass.value;
+    applyStudentProfileChanges(true);
+  });
+
+  elements.settingSportType.addEventListener('change', () => {
+    elements.initSportType.value = elements.settingSportType.value;
+    applyStudentProfileChanges(true);
+  });
+
+  // 온보딩 입력창에서도 타이핑 시 즉시 설정 탭과 동기화
+  elements.initStudentName.addEventListener('input', () => {
+    elements.settingStudentName.value = elements.initStudentName.value;
+    applyStudentProfileChanges(true);
+  });
+
+  elements.initStudentClass.addEventListener('input', () => {
+    elements.settingStudentClass.value = elements.initStudentClass.value;
+    applyStudentProfileChanges(true);
+  });
+
+  elements.initSportType.addEventListener('change', () => {
+    elements.settingSportType.value = elements.initSportType.value;
+    applyStudentProfileChanges(true);
+  });
+
   elements.btnSaveStudentInfo.addEventListener('click', () => {
-    state.student.name = elements.settingStudentName.value.trim() || '김민준';
-    state.student.class = elements.settingStudentClass.value.trim() || '1-1';
-    state.student.sport = elements.settingSportType.value;
-    localStorage.setItem('running_student', JSON.stringify(state.student));
-    updateProfileUI();
-    updateMyMarker(state.lastPosition[0], state.lastPosition[1]);
-    joinSocialRoom();
-    alert('프로필 정보가 저장되었습니다!');
+    applyStudentProfileChanges(true);
+    alert('✅ 프로필 정보가 저장되었습니다!');
   });
 
   elements.btnSaveGasUrl.addEventListener('click', () => {
